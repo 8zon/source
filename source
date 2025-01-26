@@ -2,9 +2,9 @@
 
 local UserInputService = game:GetService("UserInputService")
 local Camera = Workspace.CurrentCamera
-local Players = game:GetService("Players"),
-local Workspace = game:GetService("Workspace"),
-local VirtualInputManager = game:GetService("VirtualInputManager"),
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local TweenService = game:GetService("TweenService")
 
 -- Local Player and Mouse
@@ -197,7 +197,11 @@ end
 
 -- Function: Get Predicted Position of Target
 local function GetPredictedPosition(target)
-    if not target or not target.Character then return nil end
+    if not target or not target.Character then
+        warn("No valid target for prediction.")
+        return nil
+    end
+
     local closestPoint = GetClosestPredictionPoint(target.Character)
 
     -- Ensure Anti-Y Level Curve
