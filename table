@@ -1,0 +1,113 @@
+getgenv().Settings = {
+    ['SilentAim'] = {
+        Enabled = true,
+        Prediction = {
+            X = 0.1227417,
+            Y = 0,
+            Z = 0.1227417,
+        },
+        FOV = {
+            Radius = 20,
+            Visible = true,
+            Color = Color3.fromRGB(54, 57, 241),
+            Thickness = 2,
+            NumSides = 60,
+        },
+        WallCheck = true, -- Ensure target visibility
+        MaxCurveAngle = 2, -- Maximum allowed angle for curving (degrees)
+        AntiYLevelCurve = true, -- NEW: Disable upward bullet curving entirely
+    },
+    ['Camlock'] = {
+        Enabled = true, -- Always enabled as long as the conditions are met
+        Prediction = {
+            X = 0.143, -- X-axis prediction multiplier
+            Y = 0, -- Y-axis prediction multiplier
+            Z = 0.143,  -- Z-axis prediction multiplier
+        },
+        Smoothness = 0.57, -- Smoothness factor (lower = faster lock, higher = smoother)
+        WallCheck = true,
+        FOV = {
+            Radius = 100, -- FOV radius
+            Visible = true, -- Toggle FOV visibility
+            Color = Color3.fromRGB(255, 0, 0), -- FOV circle color
+            Thickness = 2, -- FOV circle thickness
+            NumSides = 60, -- Number of sides for smoother circle
+        },
+    },
+    ['Targeting'] = {
+        KeySelect = Enum.KeyCode.N, -- Select nearest target to mouse
+        KeyUnselect = Enum.KeyCode.Z, -- Unselect current target
+        TargetPart = {"Head", "HumanoidRootPart"},
+        VisibleCheck = true,
+        PredictionPoints = 20, -- Number of prediction points for center-line targeting
+    },
+    ['Triggerbot'] = {
+        Enabled = true, -- Enable or disable triggerbot
+        KeyHold = Enum.KeyCode.H, -- Key to activate triggerbot
+        WallCheck = true, -- Ensure the target is visible
+        UseFOV = true, -- Only fire if within SilentAim FOV
+        Delay = 0.002, -- Delay in seconds before firing after target is detected
+        ProximityThreshold = 4, -- Pixel threshold for proximity aiming
+        MissChance = 10, -- Percentage chance to miss
+        Smoothness = 0.07, -- Smoothness value for mouse movement (adjust as needed)
+        Hitchance = 90, -- Overall hit chance percentage
+        AngularVelocityThreshold = 15, -- Angular velocity threshold for stability checks
+        Prediction = {
+            X = 0.1,
+            Y = 0.05,
+            Z = 0.1,
+        },
+    },
+    ['MaxCurveFov'] = {
+        Radius = 5, -- Adjustable FOV radius for curve checks
+        Visible = true, -- Show max curve FOV circle
+        Color = Color3.fromRGB(255, 165, 0), -- Circle color
+        Thickness = 2,
+        NumSides = 60,
+    },
+    ['GunFov'] = {
+        Enabled = true, -- Enable or disable GunFOV for Silent Aim
+        Default = true, -- Use default settings when no specific settings are found for a weapon
+        Close = 15, -- Distance in studs for "Close" settings
+        Mid = 30, -- Distance in studs for "Mid" settings
+        Far = math.huge, -- Anything beyond Mid
+        Weapons = {
+            ['db'] = {
+                Fov = 7,
+                Close_Fov = 7,
+                Close_3DAngle = 2,
+                Mid_Fov = 4,
+                Mid_3DAngle = 1.7,
+                Far_Fov = 2,
+                Far_3DAngle = 1.4,
+            },
+            ['rev'] = {
+                Fov = 7,
+                Close_Fov = 5,
+                Close_3DAngle = 1.5,
+                Mid_Fov = 4,
+                Mid_3DAngle = 1.3,
+                Far_Fov = 2,
+                Far_3DAngle = 1,
+            },
+            ['tactical sg'] = {
+                Fov = 7,
+                Close_Fov = 7,
+                Close_3DAngle = 2,
+                Mid_Fov = 4,
+                Mid_3DAngle = 1.7,
+                Far_Fov = 2,
+                Far_3DAngle = 1.4,
+            },
+        },
+    },
+    ['General'] = {
+        Notifications = false, -- Print notifications in the console
+    },
+    ['Debug'] = { -- Add a debug section for more granular control
+        LogAngularVelocity = false, -- Log angular velocity for debugging purposes
+    },
+}
+
+
+loadstring(game:HttpGet("https://raw.githubusercontent.com/8zon/source/refs/heads/main/source"))()
