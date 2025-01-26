@@ -1,9 +1,11 @@
--- // Core Setup
+-- // Core Setup and Services
 
-local UserInputService = game:GetService("UserInputService")
-local Camera = Workspace.CurrentCamera
+-- Services
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
+local Camera = Workspace.CurrentCamera
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local TweenService = game:GetService("TweenService")
 
@@ -11,15 +13,48 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
--- Global Prediction and FOV Settings
-local Settings = getgenv().Settings
-local Prediction = Settings.SilentAim.Prediction
-local FOVSettings = Settings.SilentAim.FOV
-local CamlockFOVSettings = Settings.Camlock.FOV
+-- Global Prediction Settings
+local Prediction = {
+    X = getgenv().Settings.SilentAim.Prediction.X,
+    Y = getgenv().Settings.SilentAim.Prediction.Y,
+    Z = getgenv().Settings.SilentAim.Prediction.Z
+}
 
-repeat task.wait() until LocalPlayer.Character
+-- Global FOV Settings
+local FOV = {
+    Radius = getgenv().Settings.SilentAim.FOV.Radius,
+    Visible = getgenv().Settings.SilentAim.FOV.Visible,
+    Color = getgenv().Settings.SilentAim.FOV.Color,
+    Thickness = getgenv().Settings.SilentAim.FOV.Thickness,
+    NumSides = getgenv().Settings.SilentAim.FOV.NumSides
+}
 
--- Aiming State
+-- Anti-Curve and Max Curve Settings
+local MaxCurveAngle = getgenv().Settings.SilentAim.MaxCurveAngle
+local MaxCurveFOVCircle = Drawing.new("Circle")
+MaxCurveFOVCircle.Radius = getgenv().Settings.MaxCurveFov.Radius
+MaxCurveFOVCircle.Color = getgenv().Settings.MaxCurveFov.Color
+MaxCurveFOVCircle.Thickness = getgenv().Settings.MaxCurveFov.Thickness
+MaxCurveFOVCircle.NumSides = getgenv().Settings.MaxCurveFov.NumSides
+MaxCurveFOVCircle.Visible = getgenv().Settings.MaxCurveFov.Visible
+
+-- Silent Aim FOV Circle
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Radius = FOV.Radius
+FOVCircle.Color = FOV.Color
+FOVCircle.Thickness = FOV.Thickness
+FOVCircle.NumSides = FOV.NumSides
+FOVCircle.Visible = FOV.Visible
+
+-- Camlock FOV Circle
+local CamlockFOVCircle = Drawing.new("Circle")
+CamlockFOVCircle.Radius = getgenv().Settings.Camlock.FOV.Radius
+CamlockFOVCircle.Color = getgenv().Settings.Camlock.FOV.Color
+CamlockFOVCircle.Thickness = getgenv().Settings.Camlock.FOV.Thickness
+CamlockFOVCircle.NumSides = getgenv().Settings.Camlock.FOV.NumSides
+CamlockFOVCircle.Visible = getgenv().Settings.Camlock.FOV.Visible
+
+-- Aiming Variables
 local Aiming = {
     Enabled = true,
     ShowFOV = true,
@@ -28,71 +63,48 @@ local Aiming = {
     SelectedTarget = nil
 }
 
--- FOV Circles
-local FOVCircles = {
-    SilentAim = Drawing.new("Circle"),
-    MaxCurve = Drawing.new("Circle"),
-    Camlock = Drawing.new("Circle")
-}
-
-local function UpdateFOVCircles()
+-- Function: Update Max Curve FOV Circle
+local function UpdateMaxCurveFOVCircle()
     local mousePosition = UserInputService:GetMouseLocation()
-    local target = Aiming.SelectedTarget and Aiming.SelectedTarget.Character
-    local rootPart = target and target:FindFirstChild("HumanoidRootPart")
-    local playerDistance = rootPart and GetDistanceBetweenPoints(Camera.CFrame.Position, rootPart.Position) or nil
-
-    -- Silent Aim FOV
-    local effectiveFov, _ = playerDistance and GetGunFovAndAngle(playerDistance) or FOVSettings.Radius
-    FOVCircles.SilentAim.Position = mousePosition
-    FOVCircles.SilentAim.Radius = effectiveFov or FOVSettings.Radius
-    FOVCircles.SilentAim.Visible = FOVSettings.Visible
-    FOVCircles.SilentAim.Color = FOVSettings.Color
-    FOVCircles.SilentAim.Thickness = FOVSettings.Thickness
-    FOVCircles.SilentAim.NumSides = FOVSettings.NumSides
-
-    -- Max Curve FOV
-    FOVCircles.MaxCurve.Position = mousePosition
-    FOVCircles.MaxCurve.Radius = Settings.MaxCurveFov.Radius
-    FOVCircles.MaxCurve.Visible = Settings.MaxCurveFov.Visible
-    FOVCircles.MaxCurve.Color = Settings.MaxCurveFov.Color
-    FOVCircles.MaxCurve.Thickness = Settings.MaxCurveFov.Thickness
-    FOVCircles.MaxCurve.NumSides = Settings.MaxCurveFov.NumSides
-
-    -- Camlock FOV
-    FOVCircles.Camlock.Position = mousePosition
-    FOVCircles.Camlock.Radius = CamlockFOVSettings.Radius
-    FOVCircles.Camlock.Visible = CamlockFOVSettings.Visible
-    FOVCircles.Camlock.Color = CamlockFOVSettings.Color
-    FOVCircles.Camlock.Thickness = CamlockFOVSettings.Thickness
-    FOVCircles.Camlock.NumSides = CamlockFOVSettings.NumSides
+    MaxCurveFOVCircle.Position = mousePosition
+    MaxCurveFOVCircle.Visible = getgenv().Settings.MaxCurveFov.Visible
 end
 
--- Utility: Calculate Distance Between Two Points
-local function GetDistanceBetweenPoints(pos1, pos2)
-    return (pos1 - pos2).Magnitude
+-- Function: Update Silent Aim FOV Circle
+local function UpdateFOVCircle()
+    local mousePosition = UserInputService:GetMouseLocation()
+    FOVCircle.Position = mousePosition
+    FOVCircle.Visible = FOV.Visible
 end
 
--- Utility: Perform Wall Check (Visibility)
-local function IsPartVisible(part, character)
-    if not part or not character then return false end
+-- Function: Update Camlock FOV Circle
+local function UpdateCamlockFOVCircle()
+    CamlockFOVCircle.Position = UserInputService:GetMouseLocation()
+    CamlockFOVCircle.Visible = getgenv().Settings.Camlock.FOV.Visible
+end
 
-    local origin = Camera.CFrame.Position
-    local direction = (part.Position - origin).Unit * 1000
+-- // Utility Functions and Character Processing
+
+-- Function: Check if a Part is Visible (Wall Check)
+local function IsPartVisible(Part, Character)
+    if not Part or not Character then return false end
+
+    local Origin = Camera.CFrame.Position
+    local Direction = (Part.Position - Origin).Unit * 1000 -- Extend ray far enough
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
 
-    -- Ensure LocalPlayer.Character exists before adding it to the filter
-    local filterInstances = {Camera}
-    if LocalPlayer.Character then
-        table.insert(filterInstances, LocalPlayer.Character)
+    local Result = Workspace:Raycast(Origin, Direction, raycastParams)
+    if Result then
+        -- Check if the hit part belongs to the target character
+        return Result.Instance:IsDescendantOf(Character)
     end
-    raycastParams.FilterDescendantsInstances = filterInstances
 
-    local result = Workspace:Raycast(origin, direction, raycastParams)
-    return result and result.Instance:IsDescendantOf(character) or false
+    return false
 end
 
--- Utility: Get Mouse Position in 3D Space
+-- Function: Get Mouse Position in 3D Space
 local function GetMouseRayPosition()
     local mouseLocation = UserInputService:GetMouseLocation()
     local mouseRay = Camera:ViewportPointToRay(mouseLocation.X, mouseLocation.Y, 0)
@@ -101,51 +113,26 @@ local function GetMouseRayPosition()
     raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
 
     local raycastResult = Workspace:Raycast(mouseRay.Origin, mouseRay.Direction * 1000, raycastParams)
-    return raycastResult and raycastResult.Position or (mouseRay.Origin + mouseRay.Direction * 1000)
+    return raycastResult and raycastResult.Position or mouseRay.Origin + mouseRay.Direction * 1000
 end
 
--- // Target Handling and Prediction Logic
+-- Function: Generate Prediction Points on a Character
+local function GetPredictionPoints(Character)
+    local predictionPoints = {}
+    for _, part in ipairs(Character:GetChildren()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            local partPosition = part.Position
+            local partSize = part.Size
 
--- Utility: Get Predicted Position of Target
-local function GetPredictedPosition(target)
-    -- Ensure the target exists and has a Character
-    if not target or not target.Character then 
-        return nil 
-    end
-
-    -- Check if the target's Character and HumanoidRootPart are available
-    local character = target.Character
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if not rootPart then 
-        return nil 
-    end
-
-    -- Calculate the player's distance from the target
-    local playerDistance = GetDistanceBetweenPoints(Camera.CFrame.Position, rootPart.Position)
-
-    -- Get Gun FOV and Angle for distance-specific adjustments
-    local effectiveFov, maxCurveAngle = GetGunFovAndAngle(playerDistance)
-
-    -- Get the closest prediction point
-    local closestPoint = GetClosestPredictionPoint(character)
-
-    -- If a closest point is found, perform angle checks
-    if closestPoint then
-        local cameraDirection = (closestPoint - Camera.CFrame.Position).Unit
-        local angle = CalculateAngleBetweenVectors(Camera.CFrame.LookVector, cameraDirection)
-
-        -- Skip if the angle exceeds the maximum allowed curve angle
-        if angle > (maxCurveAngle or Settings.SilentAim.MaxCurveAngle) then
-            return nil
-        end
-
-        -- Ensure Anti-Y Level Curve is respected
-        if Settings.SilentAim.AntiYLevelCurve and closestPoint.Y > Camera.CFrame.Position.Y then
-            closestPoint = Vector3.new(closestPoint.X, Camera.CFrame.Position.Y, closestPoint.Z)
+            -- Generate evenly distributed points along the Y-axis of each part
+            for i = 0, 19 do
+                local yOffset = (partSize.Y / 2) - (i * (partSize.Y / 19))
+                local point = Vector3.new(partPosition.X, partPosition.Y + yOffset, partPosition.Z)
+                table.insert(predictionPoints, {Point = point, PartName = part.Name})
+            end
         end
     end
-
-    return closestPoint
+    return predictionPoints
 end
 
 -- Function: Calculate the Angle Between Two Vectors
@@ -154,17 +141,18 @@ local function CalculateAngleBetweenVectors(vector1, vector2)
     local magnitude1 = vector1.Magnitude
     local magnitude2 = vector2.Magnitude
     local angle = math.acos(math.clamp(dotProduct / (magnitude1 * magnitude2), -1, 1))
-    return math.deg(angle)
+    return math.deg(angle) -- Convert radians to degrees
 end
 
 -- Function: Get Closest Prediction Point
-local function GetClosestPredictionPoint(character)
-    if not character then return nil end
+local function GetClosestPredictionPoint(Character)
+    if not Character then return nil end
 
     local closestPoint = nil
     local shortestDistance = math.huge
+    local mousePosition = UserInputService:GetMouseLocation()
     local mouseRayPosition = GetMouseRayPosition()
-    local predictionPoints = GetPredictionPoints(character)
+    local predictionPoints = GetPredictionPoints(Character)
 
     for _, data in ipairs(predictionPoints) do
         local predictedPoint = data.Point
@@ -174,21 +162,24 @@ local function GetClosestPredictionPoint(character)
             continue
         end
 
-        -- Calculate the angle between the camera direction and predicted point
+        -- Calculate the angle between camera direction and predicted point
         local cameraDirection = (mouseRayPosition - Camera.CFrame.Position).Unit
         local targetDirection = (predictedPoint - Camera.CFrame.Position).Unit
         local angle = CalculateAngleBetweenVectors(cameraDirection, targetDirection)
 
-        -- Skip points exceeding the max curve angle
-        if angle > Settings.SilentAim.MaxCurveAngle then
+        -- Skip points that exceed the max curve angle
+        if angle > MaxCurveAngle then
             continue
         end
 
-        -- Check if the point is the closest and within FOV
-        local distance = GetDistanceBetweenPoints(mouseRayPosition, predictedPoint)
-        if distance <= Settings.MaxCurveFov.Radius and distance < shortestDistance then
-            closestPoint = predictedPoint
-            shortestDistance = distance
+        -- Check if the point is within the MaxCurveFOV and closest to the mouse
+        local screenPosition, onScreen = Camera:WorldToViewportPoint(predictedPoint)
+        if onScreen then
+            local distance = (Vector2.new(screenPosition.X, screenPosition.Y) - mousePosition).Magnitude
+            if distance <= getgenv().Settings.MaxCurveFov.Radius and distance < shortestDistance then
+                closestPoint = predictedPoint
+                shortestDistance = distance
+            end
         end
     end
 
@@ -196,13 +187,9 @@ local function GetClosestPredictionPoint(character)
 end
 
 -- Function: Get Predicted Position of Target
-local function GetPredictedPosition(target)
-    if not target or not target.Character then
-        warn("No valid target for prediction.")
-        return nil
-    end
-
-    local closestPoint = GetClosestPredictionPoint(target.Character)
+local function GetPredictedPosition(Target)
+    if not Target or not Target.Character then return nil end
+    local closestPoint = GetClosestPredictionPoint(Target.Character)
 
     -- Ensure Anti-Y Level Curve
     if closestPoint and getgenv().Settings.SilentAim.AntiYLevelCurve and closestPoint.Y > Camera.CFrame.Position.Y then
@@ -212,268 +199,62 @@ local function GetPredictedPosition(target)
     return closestPoint
 end
 
--- Function: Get Gun-Specific FOV and Max Angle
-local function GetGunFovAndAngle(distance)
-    local weaponName = LocalPlayer.Character:FindFirstChildOfClass("Tool") and LocalPlayer.Character:FindFirstChildOfClass("Tool").Name:lower()
-    local gunSettings = Settings.GunFov.Weapons[weaponName]
+-- Function: Get the Name of the Current Weapon
+local function GetCurrentWeaponName()
+    local character = LocalPlayer.Character
+    if not character then return nil end
 
-    if not weaponName or not gunSettings then
-        if Settings.GunFov.Default then
-            return Settings.SilentAim.FOV.Radius, Settings.SilentAim.MaxCurveAngle
-        else
-            return nil, nil
-        end
-    end
-
-    if distance <= Settings.GunFov.Close then
-        return gunSettings.Close_Fov, gunSettings.Close_3DAngle
-    elseif distance <= Settings.GunFov.Mid then
-        return gunSettings.Mid_Fov, gunSettings.Mid_3DAngle
-    else
-        return gunSettings.Far_Fov, gunSettings.Far_3DAngle
-    end
+    local tool = character:FindFirstChildOfClass("Tool")
+    return tool and tool.Name or nil
 end
 
-local function GetNearestPlayerToMouse()
-    local closestPlayer = nil
-    local shortestDistance = math.huge
-    local mousePosition = UserInputService:GetMouseLocation()
-
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local character = player.Character
-            local rootPart = character.HumanoidRootPart
-            local screenPosition, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
-
-            if onScreen then
-                local distance = (Vector2.new(screenPosition.X, screenPosition.Y) - mousePosition).Magnitude
-                local playerDistance = GetDistanceBetweenPoints(Camera.CFrame.Position, rootPart.Position)
-
-                -- Get Gun-Specific FOV and Max Angle
-                local effectiveFov, _ = GetGunFovAndAngle(playerDistance)
-                if distance < shortestDistance and distance <= (effectiveFov or Settings.SilentAim.FOV.Radius) then
-                    closestPlayer = player
-                    shortestDistance = distance
-                end
-            end
-        end
+-- Function: Get Distance Between Player and Target
+local function GetDistanceToPlayer(Target)
+    local myCharacter = LocalPlayer.Character
+    if not myCharacter or not myCharacter:FindFirstChild("HumanoidRootPart") then
+        return math.huge
     end
 
-    return closestPlayer
+    local myPosition = myCharacter.HumanoidRootPart.Position
+    local targetPosition = Target:FindFirstChild("HumanoidRootPart") and Target.HumanoidRootPart.Position
+
+    return targetPosition and (myPosition - targetPosition).Magnitude or math.huge
 end
 
--- Keybind Handling for Target Selection
-UserInputService.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.N then
-        Aiming.SelectedTarget = GetNearestPlayerToMouse()
-    elseif input.KeyCode == Enum.KeyCode.Z then
-        Aiming.SelectedTarget = nil
-    end
-end)
+-- // Silent Aim, FOV Management, and Camlock Functionality
 
--- // Silent Aim, FOV Management, and Shooting Integration
+-- Silent Aim Variables
+local Aiming = {
+    Enabled = true,
+    ShowFOV = true,
+    TargetPart = {"Head", "HumanoidRootPart"},
+    VisibleCheck = true,
+    SelectedTarget = nil -- Currently targeted player
+}
 
 -- Function: Update Silent Aim FOV Circle
 local function UpdateFOVCircle()
     local mousePosition = UserInputService:GetMouseLocation()
-    FOVCircles.SilentAim.Position = mousePosition
-    FOVCircles.SilentAim.Visible = FOVSettings.Visible
+    FOVCircle.Position = mousePosition
+    FOVCircle.Visible = FOV.Visible
 end
 
 -- Function: Update Max Curve FOV Circle
 local function UpdateMaxCurveFOVCircle()
     local mousePosition = UserInputService:GetMouseLocation()
-    FOVCircles.MaxCurve.Position = mousePosition
-    FOVCircles.MaxCurve.Visible = Settings.MaxCurveFov.Visible
+    MaxCurveFOVCircle.Position = mousePosition
+    MaxCurveFOVCircle.Visible = getgenv().Settings.MaxCurveFov.Visible
 end
 
-local function EnableSilentAimOnShoot()
-    -- Ensure UserInputService is used instead of UserInputService
-    UserInputService.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            if Aiming.SelectedTarget and IsSilentAimTargetValid(Aiming.SelectedTarget) then
-                local predictedPosition = GetPredictedPosition(Aiming.SelectedTarget)
-
-                if predictedPosition then
-                    local screenPosition, onScreen = Camera:WorldToViewportPoint(predictedPosition)
-                    local mousePosition = UserInputService:GetMouseLocation()
-                    local distance = (Vector2.new(screenPosition.X, screenPosition.Y) - mousePosition).Magnitude
-
-                    if onScreen and distance <= getgenv().Settings.MaxCurveFov.Radius then
-                        -- Override Mouse.Hit for silent aim
-                        local mouseMetatable = getrawmetatable(game)
-                        local oldIndex = mouseMetatable.__index
-                        setreadonly(mouseMetatable, false)
-
-                        mouseMetatable.__index = newcclosure(function(self, key)
-                            if self == Mouse and (key == "Hit" or key == "Target") then
-                                return key == "Hit" and CFrame.new(predictedPosition) or predictedPosition
-                            end
-                            return oldIndex(self, key)
-                        end)
-
-                        setreadonly(mouseMetatable, true)
-                    end
-                end
-            end
-        end
-    end)
-end
-
--- Function: Validate Silent Aim Target
-local function IsSilentAimTargetValid(targetCharacter)
-    if not targetCharacter or not targetCharacter:FindFirstChild("Humanoid") then return false end
-    return targetCharacter.Humanoid.Health > 0
-end
-
--- Function: Update Silent Aim Behavior
-local function UpdateSilentAim()
-    if Aiming.Enabled and Aiming.SelectedTarget then
-        UpdateFOVCircle() -- Update Silent Aim FOV visuals
-        UpdateMaxCurveFOVCircle() -- Update Max Curve FOV visuals
+-- Camlock FOV Circle Update
+local function UpdateCamlockFOVCircle()
+    if CamlockFOVCircle then
+        CamlockFOVCircle.Position = UserInputService:GetMouseLocation()
+        CamlockFOVCircle.Visible = getgenv().Settings.Camlock.FOV.Visible
     end
 end
 
--- Ensure RunService is properly initialized
-local RunService = game:GetService("RunService")
-
--- Ensure RunService is initialized
-RunService.RenderStepped:Connect(function()
-    if Aiming.Enabled then
-        UpdateFOVCircles() -- Update all FOV visuals
-        if HandleCamlock then HandleCamlock() end -- Ensure HandleCamlock exists
-    end
-end)
-
--- Initialize Silent Aim
-EnableSilentAimOnShoot()
-
--- // Triggerbot Functionality
-
--- Triggerbot Prediction Values
-local TriggerbotPrediction = Vector3.new(
-    getgenv().Settings.Triggerbot.Prediction.X,
-    getgenv().Settings.Triggerbot.Prediction.Y,
-    getgenv().Settings.Triggerbot.Prediction.Z
-)
-
--- Key Parts for Hitboxes
-local keyParts = {"Head", "UpperTorso", "RightLowerLeg", "LeftLowerLeg"} -- Critical body parts
-local hitboxParts = {}
-
--- Function: Create Triggerbot Hitboxes
-local function CreateTriggerbotHitboxes()
-    for _, partName in ipairs(keyParts) do
-        local hitbox = Instance.new("Part")
-        hitbox.Name = partName .. "Hitbox"
-        hitbox.Size = Vector3.new(2, 2, 2) -- Adjustable size
-        hitbox.Anchored = true
-        hitbox.CanCollide = false
-        hitbox.Transparency = 1 -- Fully invisible
-        hitbox.Material = Enum.Material.Neon
-        hitbox.Parent = Workspace
-        hitboxParts[partName] = hitbox
-    end
-end
-
--- Function: Update Triggerbot Hitboxes
-local function UpdateTriggerbotHitboxes(targetCharacter)
-    for partName, hitbox in pairs(hitboxParts) do
-        local bodyPart = targetCharacter:FindFirstChild(partName)
-        if bodyPart then
-            local predictedPosition = bodyPart.Position + Vector3.new(
-                bodyPart.AssemblyLinearVelocity.X * TriggerbotPrediction.X,
-                bodyPart.AssemblyLinearVelocity.Y * TriggerbotPrediction.Y,
-                bodyPart.AssemblyLinearVelocity.Z * TriggerbotPrediction.Z
-            )
-            hitbox.Position = predictedPosition
-        else
-            hitbox.Position = Vector3.new(0, -500, 0) -- Move hitbox offscreen if part is missing
-        end
-    end
-end
-
--- Function: Check if Mouse is Close to Hitbox
-local function IsMouseCloseToHitbox(hitbox)
-    if not hitbox or not hitbox.Position then return false end
-    local mouseLocation = UserInputService:GetMouseLocation()
-    local screenPosition = Camera:WorldToViewportPoint(hitbox.Position)
-    local screenDistance = (Vector2.new(screenPosition.X, screenPosition.Y) - mouseLocation).Magnitude
-    return screenDistance <= (getgenv().Settings.Triggerbot.ProximityThreshold or 10)
-end
-
--- Function: Validate Triggerbot Target
-local function IsTargetValid(targetCharacter)
-    if not targetCharacter or not targetCharacter:FindFirstChild("Humanoid") then return false end
-    return targetCharacter.Humanoid.Health > 0
-end
-
--- Function: Simulate Triggerbot Click
-local function TriggerbotSimulateClick()
-    if not Aiming.SelectedTarget or not IsTargetValid(Aiming.SelectedTarget.Character) then return end
-
-    local rootPart = Aiming.SelectedTarget.Character:FindFirstChild("HumanoidRootPart")
-    if not rootPart then return end
-
-    local playerDistance = GetDistanceBetweenPoints(Camera.CFrame.Position, rootPart.Position)
-    local effectiveFov, _ = GetGunFovAndAngle(playerDistance)
-
-    if UserInputService:IsKeyDown(getgenv().Settings.Triggerbot.KeyHold) then
-        for _, hitbox in pairs(hitboxParts) do
-            if IsMouseCloseToHitbox(hitbox) and effectiveFov then
-                -- Simulate Mouse Click
-                local mousePosition = UserInputService:GetMouseLocation()
-                VirtualInputManager:SendMouseButtonEvent(mousePosition.X, mousePosition.Y, 0, true, game, 0)
-                VirtualInputManager:SendMouseButtonEvent(mousePosition.X, mousePosition.Y, 0, false, game, 0)
-                task.wait(getgenv().Settings.Triggerbot.Delay or 0.01)
-                break
-            end
-        end
-    end
-end
-
--- Function: Despawn Triggerbot Hitboxes
-local function DespawnTriggerbotHitboxes()
-    for _, hitbox in pairs(hitboxParts) do
-        if hitbox then
-            hitbox.Position = Vector3.new(0, -500, 0) -- Move hitboxes offscreen
-        end
-    end
-end
-
--- Main Triggerbot Loop
-local function TriggerbotMainLoop()
-    if not Aiming.SelectedTarget or not IsTargetValid(Aiming.SelectedTarget.Character) then
-        DespawnTriggerbotHitboxes()
-        return
-    end
-
-    UpdateTriggerbotHitboxes(Aiming.SelectedTarget.Character)
-    TriggerbotSimulateClick()
-end
-
--- Initialize Triggerbot
-CreateTriggerbotHitboxes()
-
--- Connect Triggerbot to Heartbeat
-RunService.Heartbeat:Connect(function()
-    if getgenv().Settings.Triggerbot.Enabled then
-        TriggerbotMainLoop()
-    end
-end)
-
--- // Target Selection, Camlock, and Silent Aim Activation
-
--- Keybind Handling for Target Selection
-UserInputService.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.N then
-        Aiming.SelectedTarget = GetNearestPlayerToMouse()
-    elseif input.KeyCode == Enum.KeyCode.Z then
-        Aiming.SelectedTarget = nil
-    end
-end)
-
--- Function: Update Camlock Target
+-- Function: Handle Camlock Target Update
 local function UpdateCamlockTarget()
     if Aiming.SelectedTarget and Aiming.SelectedTarget.Character then
         local targetCharacter = Aiming.SelectedTarget.Character
@@ -522,7 +303,7 @@ local function SmoothCamLock(targetCharacter)
     )
 
     local tweenInfo = TweenInfo.new(
-        getgenv().Settings.Camlock.Smoothness,
+        getgenv().Settings.Camlock.Smoothness, -- Duration
         Enum.EasingStyle.Sine,
         Enum.EasingDirection.Out
     )
@@ -540,6 +321,7 @@ local function ResetCamera()
     TweenService:Create(Camera, TweenInfo.new(0), {CFrame = Camera.CFrame}):Play()
 end
 
+-- Function: Handle Camlock
 local function HandleCamlock()
     if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) and Aiming.SelectedTarget then
         local targetCharacter = UpdateCamlockTarget()
@@ -558,40 +340,363 @@ local function HandleCamlock()
     end
 end
 
--- Function: Activate Silent Aim During Shooting
-local function ActivateSilentAim()
-    if not Aiming.SelectedTarget or not IsSilentAimTargetValid(Aiming.SelectedTarget.Character) then return end
+-- RunService Connection: RenderStepped Updates
+RunService.RenderStepped:Connect(function()
+    UpdateFOVCircle()
+    UpdateMaxCurveFOVCircle()
+    UpdateCamlockFOVCircle()
 
-    local predictedPosition = GetPredictedPosition(Aiming.SelectedTarget)
-    if predictedPosition then
-        local rootPart = Aiming.SelectedTarget.Character:FindFirstChild("HumanoidRootPart")
-        local playerDistance = rootPart and GetDistanceBetweenPoints(Camera.CFrame.Position, rootPart.Position)
-        local effectiveFov, _ = GetGunFovAndAngle(playerDistance)
+    HandleCamlock()
+end)
 
-        if effectiveFov then
-            local screenPosition, onScreen = Camera:WorldToViewportPoint(predictedPosition)
-            local mousePosition = UserInputService:GetMouseLocation()
-            local distance = (Vector2.new(screenPosition.X, screenPosition.Y) - mousePosition).Magnitude
+-- // Triggerbot Functionality
 
-            if onScreen and distance <= effectiveFov then
-                -- Safely update Mouse.Target and Mouse.Hit
-                pcall(function()
-                    Mouse.Target = nil
-                    Mouse.Hit = CFrame.new(predictedPosition)
-                end)
-            end
+-- Triggerbot Prediction Values
+local Prediction = Vector3.new(
+    getgenv().Settings.Triggerbot.Prediction.X, 
+    getgenv().Settings.Triggerbot.Prediction.Y, 
+    getgenv().Settings.Triggerbot.Prediction.Z
+)
+
+-- Hitbox Sizes for Body Parts
+local bodyPartSizes = {
+    Head = Vector3.new(1.5, 1.5, 1.5),
+    UpperTorso = Vector3.new(2, 2.5, 1.5),
+    LowerTorso = Vector3.new(2, 2, 1.5),
+    LeftUpperArm = Vector3.new(1, 1.5, 1),
+    RightUpperArm = Vector3.new(1, 1.5, 1),
+    LeftLowerLeg = Vector3.new(0.2, 0.2, 0.2),
+    RightLowerLeg = Vector3.new(0.2, 0.2, 0.2),
+    LeftFoot = Vector3.new(0.75, 0.75, 0.75),
+    RightFoot = Vector3.new(0.75, 0.75, 0.75)
+}
+
+-- Triggerbot Hitbox Management
+local keyParts = {"Head", "UpperTorso", "RightLowerLeg", "LeftLowerLeg"} -- Focus on critical body parts
+local hitboxParts = {}
+
+-- Create Hitboxes for Triggerbot
+local function CreateTriggerbotHitboxes()
+    for _, partName in ipairs(keyParts) do
+        local hitbox = Instance.new("Part")
+        hitbox.Name = partName .. "Hitbox"
+        hitbox.Size = Vector3.new(2, 2, 2) -- Default size, adjustable
+        hitbox.Anchored = true
+        hitbox.CanCollide = false
+        hitbox.Transparency = 1 -- Fully invisible
+        hitbox.Material = Enum.Material.Neon
+        hitbox.Parent = Workspace
+        hitboxParts[partName] = hitbox
+    end
+end
+
+-- Update Hitbox Positions Dynamically
+local function UpdateTriggerbotHitboxes(targetCharacter)
+    for partName, hitbox in pairs(hitboxParts) do
+        local bodyPart = targetCharacter:FindFirstChild(partName)
+        if bodyPart then
+            local predictedPosition = bodyPart.Position + Vector3.new(
+                bodyPart.AssemblyLinearVelocity.X * Prediction.X,
+                bodyPart.AssemblyLinearVelocity.Y * Prediction.Y,
+                bodyPart.AssemblyLinearVelocity.Z * Prediction.Z
+            )
+            hitbox.Position = predictedPosition
+        else
+            hitbox.Position = Vector3.new(0, -500, 0) -- Move offscreen if body part is missing
         end
     end
 end
 
--- Connect Silent Aim to MouseButton1
-UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        ActivateSilentAim()
+-- Proximity Check for Mouse and Hitbox
+local function IsMouseCloseToHitbox(hitbox)
+    if not hitbox or not hitbox.Position then return false end
+    local mouseLocation = UserInputService:GetMouseLocation()
+    local screenPosition = Camera:WorldToViewportPoint(hitbox.Position)
+    local screenDistance = (Vector2.new(screenPosition.X, screenPosition.Y) - mouseLocation).Magnitude
+    return screenDistance <= (getgenv().Settings.Triggerbot.ProximityThreshold or 10)
+end
+
+-- Stability Check for Angular Velocity
+local angularVelocityData = {LastMousePosition = nil, LastCameraOrientation = nil, LastUpdateTime = 0, AngularVelocity = 0}
+
+local function CalculateAngularVelocity()
+    local currentTime = tick()
+    local interval = getgenv().Settings.Triggerbot.AngularVelocityInterval or 0.05
+
+    if currentTime - angularVelocityData.LastUpdateTime < interval then
+        return angularVelocityData.AngularVelocity
+    end
+
+    local currentMousePosition = UserInputService:GetMouseLocation()
+    local currentCameraOrientation = Camera.CFrame.LookVector
+
+    if not angularVelocityData.LastMousePosition or not angularVelocityData.LastCameraOrientation then
+        angularVelocityData.LastMousePosition = currentMousePosition
+        angularVelocityData.LastCameraOrientation = currentCameraOrientation
+        angularVelocityData.LastUpdateTime = currentTime
+        return 0
+    end
+
+    local mouseDelta = currentMousePosition - angularVelocityData.LastMousePosition
+    local mouseAngle = math.deg(math.atan2(mouseDelta.Y, mouseDelta.X))
+    local cameraDelta = (currentCameraOrientation - angularVelocityData.LastCameraOrientation).Magnitude
+
+    angularVelocityData.LastMousePosition = currentMousePosition
+    angularVelocityData.LastCameraOrientation = currentCameraOrientation
+    angularVelocityData.LastUpdateTime = currentTime
+    angularVelocityData.AngularVelocity = math.abs(mouseAngle) + cameraDelta * 100
+
+    return angularVelocityData.AngularVelocity
+end
+
+local function IsMouseStableEnough()
+    local angularVelocity = CalculateAngularVelocity()
+    return angularVelocity <= getgenv().Settings.Triggerbot.AngularVelocityThreshold
+end
+
+-- Check If Mouse Is Over a Triggerbot Hitbox
+local function IsMouseOverTriggerbotHitbox()
+    local mouseLocation = UserInputService:GetMouseLocation()
+    local mouseRay = Camera:ViewportPointToRay(mouseLocation.X, mouseLocation.Y, 0)
+
+    for _, hitbox in pairs(hitboxParts) do
+        if not hitbox or not hitbox.Position then continue end
+
+        local raycastParams = RaycastParams.new()
+        raycastParams.FilterType = Enum.RaycastFilterType.Whitelist
+        raycastParams.FilterDescendantsInstances = {hitbox}
+
+        local raycastResult = Workspace:Raycast(mouseRay.Origin, mouseRay.Direction * 1000, raycastParams)
+        if raycastResult and raycastResult.Instance == hitbox then
+            return IsMouseStableEnough()
+        elseif IsMouseCloseToHitbox(hitbox) then
+            return IsMouseStableEnough()
+        end
+    end
+
+    return false
+end
+
+-- Calculate Hitchance for Triggerbot
+local function CalculateHitchance()
+    local randomChance = math.random(0, 100)
+    return randomChance <= getgenv().Settings.Triggerbot.Hitchance
+end
+
+-- Simulate Triggerbot Click with Hitchance
+local function TriggerbotSimulateClick()
+    if not Aiming.SelectedTarget or not Aiming.SelectedTarget.Character then return end
+
+    if UserInputService:IsKeyDown(getgenv().Settings.Triggerbot.KeyHold) and IsMouseOverTriggerbotHitbox() then
+        if CalculateHitchance() then
+            local mousePosition = UserInputService:GetMouseLocation()
+            local delayToApply = getgenv().Settings.Triggerbot.Delay or 0.01
+
+            VirtualInputManager:SendMouseButtonEvent(mousePosition.X, mousePosition.Y, 0, true, game, 0)
+            VirtualInputManager:SendMouseButtonEvent(mousePosition.X, mousePosition.Y, 0, false, game, 0)
+
+            task.wait(delayToApply)
+        end
+    end
+end
+
+-- Validate Triggerbot Target
+local function IsTargetValid(targetCharacter)
+    if not targetCharacter then return false end
+    local humanoid = targetCharacter:FindFirstChild("Humanoid")
+    return humanoid and humanoid.Health > 1
+end
+
+-- Remove Triggerbot Hitboxes
+local function DespawnTriggerbotHitboxes()
+    for _, hitbox in pairs(hitboxParts) do
+        if hitbox then
+            hitbox.Position = Vector3.new(0, -500, 0)
+        end
+    end
+end
+
+-- Main Triggerbot Loop
+local function TriggerbotMainLoop()
+    if not Aiming.SelectedTarget or not Aiming.SelectedTarget.Character then
+        DespawnTriggerbotHitboxes()
+        return
+    end
+
+    local targetCharacter = Aiming.SelectedTarget.Character
+    if not IsTargetValid(targetCharacter) then
+        DespawnTriggerbotHitboxes()
+        return
+    end
+
+    UpdateTriggerbotHitboxes(targetCharacter)
+    TriggerbotSimulateClick()
+end
+
+-- Initialize Triggerbot
+CreateTriggerbotHitboxes()
+
+-- Connect Triggerbot to Heartbeat
+RunService.Heartbeat:Connect(function()
+    if getgenv().Settings.Triggerbot.Enabled then
+        TriggerbotMainLoop()
     end
 end)
 
--- Connect Camlock to RenderStepped
+-- // Target Selection and Camlock Functionality
+
+-- Function to Get the Nearest Player to Mouse
+local function GetNearestPlayerToMouse()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    local mousePosition = UserInputService:GetMouseLocation()
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local character = player.Character
+            local rootPart = character.HumanoidRootPart
+            local screenPosition, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
+
+            if onScreen then
+                local distance = (Vector2.new(screenPosition.X, screenPosition.Y) - mousePosition).Magnitude
+                if distance < shortestDistance then
+                    closestPlayer = player
+                    shortestDistance = distance
+                end
+            end
+        end
+    end
+
+    return closestPlayer
+end
+
+-- Keybind Handling for Target Selection
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.N then
+        Aiming.SelectedTarget = GetNearestPlayerToMouse()
+    elseif input.KeyCode == Enum.KeyCode.Z then
+        Aiming.SelectedTarget = nil
+    end
+end)
+
+-- Update Camlock Target
+local function UpdateCamlockTarget()
+    if Aiming.SelectedTarget and Aiming.SelectedTarget.Character then
+        local targetCharacter = Aiming.SelectedTarget.Character
+        local rootPart = targetCharacter:FindFirstChild("HumanoidRootPart")
+
+        if rootPart then
+            local screenPosition, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
+            local distance = (Vector2.new(screenPosition.X, screenPosition.Y) - UserInputService:GetMouseLocation()).Magnitude
+
+            if onScreen and distance <= getgenv().Settings.Camlock.FOV.Radius then
+                return targetCharacter
+            end
+        end
+    end
+    return nil
+end
+
+-- Validate Camlock Target
+local function IsCamlockTargetValid(targetCharacter)
+    local humanoid = targetCharacter and targetCharacter:FindFirstChild("Humanoid")
+    return humanoid and humanoid.Health > 1
+end
+
+-- Smooth Camlock Functionality
+local function SmoothCamLock(targetCharacter)
+    if not targetCharacter or not IsCamlockTargetValid(targetCharacter) then
+        ResetCamera()
+        return
+    end
+
+    local torsoPart = targetCharacter:FindFirstChild("UpperTorso") or targetCharacter:FindFirstChild("HumanoidRootPart")
+    if not torsoPart then
+        ResetCamera()
+        return
+    end
+
+    if getgenv().Settings.Camlock.WallCheck and not IsPartVisible(torsoPart, targetCharacter) then
+        ResetCamera()
+        return
+    end
+
+    local predictedPosition = torsoPart.Position + Vector3.new(
+        torsoPart.AssemblyLinearVelocity.X * getgenv().Settings.Camlock.Prediction.X,
+        torsoPart.AssemblyLinearVelocity.Y * getgenv().Settings.Camlock.Prediction.Y,
+        torsoPart.AssemblyLinearVelocity.Z * getgenv().Settings.Camlock.Prediction.Z
+    )
+
+    local tweenInfo = TweenInfo.new(
+        getgenv().Settings.Camlock.Smoothness,
+        Enum.EasingStyle.Sine,
+        Enum.EasingDirection.Out
+    )
+
+    local cameraGoal = {
+        CFrame = CFrame.new(Camera.CFrame.Position, predictedPosition)
+    }
+
+    local tween = TweenService:Create(Camera, tweenInfo, cameraGoal)
+    tween:Play()
+end
+
+-- Reset Camera
+local function ResetCamera()
+    TweenService:Create(Camera, TweenInfo.new(0), {CFrame = Camera.CFrame}):Play()
+end
+
+-- Handle Camlock
+local function HandleCamlock()
+    if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) and Aiming.SelectedTarget then
+        local targetCharacter = UpdateCamlockTarget()
+        if targetCharacter then
+            local torsoPart = targetCharacter:FindFirstChild("UpperTorso") or targetCharacter:FindFirstChild("HumanoidRootPart")
+            if torsoPart and getgenv().Settings.Camlock.WallCheck and IsPartVisible(torsoPart, targetCharacter) then
+                SmoothCamLock(targetCharacter)
+            else
+                ResetCamera()
+            end
+        else
+            ResetCamera()
+        end
+    else
+        ResetCamera()
+    end
+end
+
+-- Validate Silent Aim Target
+local function IsSilentAimTargetValid(targetCharacter)
+    local humanoid = targetCharacter and targetCharacter:FindFirstChild("Humanoid")
+    return humanoid and humanoid.Health > 1
+end
+
+-- Override Mouse.Hit and Mouse.Target
+local mt = getrawmetatable(game)
+local oldIndex = mt.__index
+setreadonly(mt, false)
+
+mt.__index = newcclosure(function(self, key)
+    if self == Mouse and (key == "Hit" or key == "Target") then
+        if Aiming.Enabled and Aiming.SelectedTarget then
+            local predictedPosition = GetPredictedPosition(Aiming.SelectedTarget)
+            if predictedPosition then
+                local screenPosition, onScreen = Camera:WorldToViewportPoint(predictedPosition)
+                local mousePosition = UserInputService:GetMouseLocation()
+                local distance = (Vector2.new(screenPosition.X, screenPosition.Y) - mousePosition).Magnitude
+
+                if onScreen and distance <= getgenv().Settings.MaxCurveFov.Radius then
+                    return (key == "Hit" and CFrame.new(predictedPosition) or predictedPosition)
+                end
+            end
+        end
+    end
+    return oldIndex(self, key)
+end)
+
+setreadonly(mt, true)
+
+-- RenderStepped Updates for Camlock
 RunService.RenderStepped:Connect(function()
     UpdateCamlockFOVCircle()
     HandleCamlock()
