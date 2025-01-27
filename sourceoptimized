@@ -1,0 +1,184 @@
+-- // Core Setup
+local Services = {
+    Players = game:GetService("Players"),
+    RunService = game:GetService("RunService"),
+    UserInputService = game:GetService("UserInputService"),
+    Workspace = game:GetService("Workspace"),
+    Camera = Workspace.CurrentCamera,
+    VirtualInputManager = game:GetService("VirtualInputManager"),
+    TweenService = game:GetService("TweenService")
+}
+
+local LocalPlayer = Services.Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+
+-- // FOV Circles
+local FOVCircles = {
+    SilentAim = Drawing.new("Circle"),
+    MaxCurve = Drawing.new("Circle"),
+    Camlock = Drawing.new("Circle")
+}
+
+-- // Initialize FOV Circles
+local function InitializeFOVCircles()
+    for name, circle in pairs(FOVCircles) do
+        circle.Visible = getgenv().Settings[name].FOV.Visible
+        circle.Color = getgenv().Settings[name].FOV.Color
+        circle.Thickness = getgenv().Settings[name].FOV.Thickness
+        circle.NumSides = getgenv().Settings[name].FOV.NumSides
+        circle.Radius = getgenv().Settings[name].FOV.Radius
+    end
+end
+
+-- // Update FOV Circles
+local function UpdateFOVCircles()
+    local mousePosition = Services.UserInputService:GetMouseLocation()
+    for _, circle in pairs(FOVCircles) do
+        circle.Position = mousePosition
+    end
+end
+
+-- // Prediction
+local function GetPredictedPosition(target)
+    local rootPart = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return nil end
+
+    local velocity = rootPart.AssemblyLinearVelocity
+    return rootPart.Position + Vector3.new(
+        velocity.X * getgenv().Settings.SilentAim.Prediction.X,
+        velocity.Y * getgenv().Settings.SilentAim.Prediction.Y,
+        velocity.Z * getgenv().Settings.SilentAim.Prediction.Z
+    )
+end
+
+-- // Wall Check
+local function IsPartVisible(part, character)
+    local origin = Services.Camera.CFrame.Position
+    local direction = (part.Position - origin).Unit * 1000
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, Services.Camera}
+
+    local result = Services.Workspace:Raycast(origin, direction, raycastParams)
+    return result and result.Instance:IsDescendantOf(character)
+end
+
+-- // Silent Aim
+local function HandleSilentAim()
+    if not getgenv().Settings.SilentAim.Enabled then return end
+
+    local target = Aiming.SelectedTarget
+    if not target or not target.Character then return end
+
+    local predictedPosition = GetPredictedPosition(target)
+    if not predictedPosition then return end
+
+    local screenPosition, onScreen = Services.Camera:WorldToViewportPoint(predictedPosition)
+    local mousePosition = Services.UserInputService:GetMouseLocation()
+    local distance = (Vector2.new(screenPosition.X, screenPosition.Y) - mousePosition).Magnitude
+
+    if onScreen and distance <= getgenv().Settings.SilentAim.FOV.Radius then
+        if getgenv().Settings.SilentAim.WallCheck and not IsPartVisible(target.Character.HumanoidRootPart, target.Character) then
+            return
+        end
+        return predictedPosition
+    end
+end
+
+-- // Camlock
+local function HandleCamlock()
+    if not getgenv().Settings.Camlock.Enabled then return end
+
+    local target = Aiming.SelectedTarget
+    if not target or not target.Character then return end
+
+    local rootPart = target.Character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+
+    local predictedPosition = GetPredictedPosition(target)
+    if not predictedPosition then return end
+
+    if getgenv().Settings.Camlock.WallCheck and not IsPartVisible(rootPart, target.Character) then
+        return
+    end
+
+    local tweenInfo = TweenInfo.new(
+        getgenv().Settings.Camlock.Smoothness,
+        Enum.EasingStyle.Sine,
+        Enum.EasingDirection.Out
+    )
+
+    local cameraGoal = {
+        CFrame = CFrame.new(Services.Camera.CFrame.Position, predictedPosition)
+    }
+
+    Services.TweenService:Create(Services.Camera, tweenInfo, cameraGoal):Play()
+end
+
+-- // Triggerbot
+local function HandleTriggerbot()
+    if not getgenv().Settings.Triggerbot.Enabled then return end
+
+    local target = Aiming.SelectedTarget
+    if not target or not target.Character then return end
+
+    local rootPart = target.Character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+
+    local predictedPosition = GetPredictedPosition(target)
+    if not predictedPosition then return end
+
+    local screenPosition, onScreen = Services.Camera:WorldToViewportPoint(predictedPosition)
+    local mousePosition = Services.UserInputService:GetMouseLocation()
+    local distance = (Vector2.new(screenPosition.X, screenPosition.Y) - mousePosition).Magnitude
+
+    if onScreen and distance <= getgenv().Settings.Triggerbot.ProximityThreshold then
+        task.wait(getgenv().Settings.Triggerbot.Delay)
+        Services.VirtualInputManager:SendMouseButtonEvent(mousePosition.X, mousePosition.Y, 0, true, game, 0)
+        Services.VirtualInputManager:SendMouseButtonEvent(mousePosition.X, mousePosition.Y, 0, false, game, 0)
+    end
+end
+
+-- // Target Selection
+local function GetNearestPlayerToMouse()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    local mousePosition = Services.UserInputService:GetMouseLocation()
+
+    for _, player in pairs(Services.Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local rootPart = player.Character.HumanoidRootPart
+            local screenPosition, onScreen = Services.Camera:WorldToViewportPoint(rootPart.Position)
+
+            if onScreen then
+                local distance = (Vector2.new(screenPosition.X, screenPosition.Y) - mousePosition).Magnitude
+                if distance < shortestDistance then
+                    closestPlayer = player
+                    shortestDistance = distance
+                end
+            end
+        end
+    end
+
+    return closestPlayer
+end
+
+-- // Keybind Handling
+Services.UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == getgenv().Settings.Targeting.KeySelect then
+        Aiming.SelectedTarget = GetNearestPlayerToMouse()
+    elseif input.KeyCode == getgenv().Settings.Targeting.KeyUnselect then
+        Aiming.SelectedTarget = nil
+    end
+end)
+
+-- // Main Loop
+Services.RunService.RenderStepped:Connect(function()
+    UpdateFOVCircles()
+    HandleSilentAim()
+    HandleCamlock()
+    HandleTriggerbot()
+end)
+
+-- // Initialize
+InitializeFOVCircles()
